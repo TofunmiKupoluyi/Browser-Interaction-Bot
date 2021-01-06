@@ -1,6 +1,5 @@
 package com.tkupoluyi.selenium_browser_test;
 
-import org.checkerframework.checker.units.qual.C;
 import org.openqa.selenium.*;
 import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.chrome.ChromeDriver;
@@ -15,7 +14,6 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 
 public class ChromeExecution {
     ChromeDriver driver;
@@ -26,7 +24,6 @@ public class ChromeExecution {
     String outputFileDirectory;
     boolean persistToFile;
     long startTimeMillis;
-    ChromeDevToolsUtil cdtUtil;
 
     ChromeExecution(String url) {
         Map<String, Object> prefs = new HashMap<String, Object>();
@@ -35,7 +32,6 @@ public class ChromeExecution {
         options.setExperimentalOption("prefs", prefs);
 //        options.addArguments("--headless", "--disable-gpu", "--window-size=1920,1200","--ignore-certificate-errors");
         this.driver = new ChromeDriver(options);
-        this.cdtUtil = new ChromeDevToolsUtil(this.driver);
         this.url = url;
         this.xpathListenersMap = new HashMap<>();
         this.persistToFile = false;
@@ -97,19 +93,6 @@ public class ChromeExecution {
             return true;
         }
         return false;
-    }
-
-    private void implicitWaitForNodeIdSearch() {
-        try {
-            TimeUnit.SECONDS.sleep(5);
-        } catch (Exception ex) {
-
-        }
-    }
-
-    private void interactWithAllElements() {
-
-        this.xpathListenersMap.forEach(this::triggerListenersOnElementByXPath);
     }
 
     private void retryInteractableElements() {
@@ -229,35 +212,6 @@ public class ChromeExecution {
         }
     }
 
-    private void getInteractionSequence() {
-        // We want to interact with the elements in document order, this will also help obtain more optimal xpath,
-        // we use absolute xpath addressing to avoid issues with changing indices
-        System.out.println(driver.getPageSource());
-
-    }
-//    public void execute() {
-//        openPage();
-//        implicitWaitForNodeIdSearch();
-//        ArrayList<Long> nodeIds = cdtUtil.getAllElementsNodeIds();
-//        nodeIds.forEach((Long nodeId) -> {
-//            Map nodeIdToObject = cdtUtil.convertNodeIdToObject(nodeId);
-//            if (nodeIdToObject != null) {
-//                String nodeObjectId = (String) nodeIdToObject.get("objectId");
-//                ArrayList<Map> listeners = cdtUtil.getListenersFromObjectId(nodeObjectId);
-//                Map nodeDescription = cdtUtil.getNodeDescription(nodeId);
-//                if (nodeDescription != null) {
-//                    String xpath = cdtUtil.generateXPathFromNodeDescription(nodeDescription);
-//                    xpathListenersMap.put(xpath, listeners); // Assemble all the xpaths first before triggering
-//                }
-//            }
-//        });
-//        new HtmlDocumentUtil(driver);
-////        interactWithAllElements();
-//        collectLogs();
-//        System.out.println("Execution time: " + ((new Date()).getTime() - startTimeMillis));
-//        closeTools();
-//    }
-
     public void execute() {
         openPage();
         HtmlDocumentUtil htmlDocumentUtil = new HtmlDocumentUtil(driver);
@@ -266,7 +220,9 @@ public class ChromeExecution {
         xpathList.forEach((xpath) -> {
             this.triggerListenersOnElementByXPath(xpath, xpathListenerMap.getOrDefault(xpath, new ArrayList<>()));
         });
-
+        collectLogs();
+        System.out.println("Execution time: " + ((new Date()).getTime() - startTimeMillis));
+        closeTools();
     }
 
 }
