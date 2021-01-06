@@ -7,8 +7,9 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
     </properties>
-    <groupId>org.example</groupId>
-    <artifactId>selenium_test_java</artifactId>
+    <groupId>com.tkupoluyi.selenium_browser_test</groupId>
+    <artifactId>selenium_browser_test</artifactId>
+    <packaging>jar</packaging>
     <version>1.0-SNAPSHOT</version>
     <dependencies>
         <dependency>
@@ -26,5 +27,37 @@
             <artifactId>selenium-server</artifactId>
             <version>3.141.59</version>
         </dependency>
+        <dependency>
+            <groupId>org.jsoup</groupId>
+            <artifactId>jsoup</artifactId>
+            <version>1.13.1</version>
+        </dependency>
     </dependencies>
+    <build>
+        <plugins>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.2.0</version>
+                <executions>
+                    <!-- Attach the shade goal into the package phase -->
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <transformers>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <mainClass>com.tkupoluyi.selenium_browser_test.MainExecution</mainClass>
+                                </transformer>
+                            </transformers>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+        </plugins>
+    </build>
 </project>

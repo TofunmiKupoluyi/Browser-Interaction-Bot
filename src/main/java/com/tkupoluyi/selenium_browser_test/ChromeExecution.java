@@ -1,3 +1,6 @@
+package com.tkupoluyi.selenium_browser_test;
+
+import org.checkerframework.checker.units.qual.C;
 import org.openqa.selenium.*;
 import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.chrome.ChromeDriver;
@@ -7,6 +10,7 @@ import org.openqa.selenium.logging.LogEntries;
 import org.openqa.selenium.logging.LogEntry;
 import org.openqa.selenium.logging.LogType;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -17,10 +21,13 @@ public class ChromeExecution {
     ChromeDriver driver;
     String url;
     Map<String, ArrayList<Map>> xpathListenersMap;
+    Queue<Map<String, Object>> retryQueue;
     FileOutputStream outputFile;
     String outputFileDirectory;
     boolean persistToFile;
     long startTimeMillis;
+    ChromeDevToolsUtil cdtUtil;
+
     ChromeExecution(String url) {
         Map<String, Object> prefs = new HashMap<String, Object>();
         prefs.put("profile.default_content_setting_values.notifications", 2);
@@ -28,10 +35,12 @@ public class ChromeExecution {
         options.setExperimentalOption("prefs", prefs);
 //        options.addArguments("--headless", "--disable-gpu", "--window-size=1920,1200","--ignore-certificate-errors");
         this.driver = new ChromeDriver(options);
+        this.cdtUtil = new ChromeDevToolsUtil(this.driver);
         this.url = url;
         this.xpathListenersMap = new HashMap<>();
         this.persistToFile = false;
-        startTimeMillis = (new Date()).getTime();
+        this.startTimeMillis = (new Date()).getTime();
+        this.retryQueue = new LinkedList<>();
     }
 
     ChromeExecution(String url, String outputFileDirectory) {
@@ -45,108 +54,22 @@ public class ChromeExecution {
         this.outputFileDirectory = outputFileDirectory;
         this.outputFile = null;
         this.persistToFile = true;
+        this.retryQueue = new LinkedList<>();
     }
 
-    private String getObjectIdOfElementByQuerySelector(String element) {
-        Map query = new HashMap()
-        {{
-            put("expression", "document.querySelector('"+element+"')" );
-        }};
-        Map result = driver.executeCdpCommand("Runtime.evaluate", query);
-        return (String)((Map)result.get("result")).get("objectId");
-    }
-
-    private Long convertObjectIdToNodeId(String objectId) {
-        Map query = new HashMap()
-        {{
-            put("objectId", objectId );
-        }};
-        Map result = driver.executeCdpCommand("DOM.requestNode", query);
-        return (Long) result.get("nodeId");
-    }
-
-    private Map convertNodeIdToObject(Long nodeId) {
-        Map query = new HashMap()
-        {{
-            put("nodeId", nodeId );
-        }};
-        try {
-            Map result = driver.executeCdpCommand("DOM.resolveNode", query);
-            return (Map) result.get("object");
-        } catch (WebDriverException ex) {
-            System.out.println("No node with node id, " + nodeId);
-            return null;
-        }
-    }
-
-    private ArrayList getListenersFromObjectId(String objectId) {
-        Map query = new HashMap()
-        {{
-            put("objectId", objectId);
-        }};
-        Map result = driver.executeCdpCommand("DOMDebugger.getEventListeners", query);
-        return (ArrayList) result.get("listeners");
-    }
-
-    private void logListener(Map listener) {
-        System.out.println(listener);
-        System.out.println("Listener type: "+ (String) listener.get("type"));
-        System.out.println("Listener Source: ");
-        String scriptId = (String)listener.get("scriptId");
-        int columnNumber = ((Long)listener.get("columnNumber")).intValue();
-        int lineNumber = ((Long)listener.get("lineNumber")).intValue();
-        String listenerSource = getListenerScriptSource(scriptId);
-        String[] listenerSourceLines = listenerSource.split("\\n");
-        if (listenerSourceLines.length >= lineNumber) {
-            System.out.println(listenerSourceLines[lineNumber].substring(columnNumber));
-        }
-    }
-
-    private ArrayList<Long> getAllElementsNodeIds() {
-        Long nodeIdOfBody = convertObjectIdToNodeId(getObjectIdOfElementByQuerySelector("*"));
-        Map query = new HashMap()
-        {{
-            put("nodeId", nodeIdOfBody);
-            put("selector", "*");
-        }};
-        Map result = driver.executeCdpCommand("DOM.querySelectorAll", query);
-        return (ArrayList<Long>) result.get("nodeIds");
-    }
-
-    private Map getNodeDescription(Long nodeId) {
-        Map query = new HashMap()
-        {{
-            put("nodeId", nodeId);
-        }};
-        try {
-            Map result = driver.executeCdpCommand("DOM.describeNode", query);
-            return (Map) result.get("node");
-        } catch (Exception ex) {
-            return null;
-        }
-    }
-
-    private String generateXPathFromNodeDescription(Map nodeDescription) {
-        String xpath = "//";
-        ArrayList<String> attributes = (ArrayList<String>) nodeDescription.get("attributes");
-        String tagName = ((String) nodeDescription.get("nodeName")).toLowerCase();
-        boolean hasAttributes = false;
-        xpath += tagName;
-        for (int i=0; i < attributes.size(); i+=2) {
-            if (attributes.get(i) != "style") {
-                if (!hasAttributes) {
-                    hasAttributes = true;
-                    xpath += "[";
-                }  else {
-                    xpath += " and ";
-                }
-                xpath += "@"+ attributes.get(i) + "='" + attributes.get(i+1) + "'";
-            }
-        }
-        if (hasAttributes) {
-            xpath += "]";
-        }
-        return xpath;
+    ChromeExecution(String url, String outputFileDirectory, String extensionDir) {
+        Map<String, Object> prefs = new HashMap<String, Object>();
+        prefs.put("profile.default_content_setting_values.notifications", 2);
+        ChromeOptions options = new ChromeOptions();
+        options.setExperimentalOption("prefs", prefs);
+        options.addExtensions(new File(extensionDir));
+        this.driver = new ChromeDriver(options);
+        this.url = url;
+        this.xpathListenersMap = new HashMap<>();
+        this.outputFileDirectory = outputFileDirectory;
+        this.outputFile = null;
+        this.persistToFile = true;
+        this.retryQueue = new LinkedList<>();
     }
 
     private void openPage() {
@@ -163,6 +86,19 @@ public class ChromeExecution {
         System.out.println("Page load complete");
     }
 
+    private boolean checkPageChange() {
+        // This ensures page load while also ensuring that the page doesn't change
+        String loadState = driver.executeScript("return document.readyState").toString();
+        while (!loadState.equals("complete") && driver.getCurrentUrl().equals(this.url)) {
+            loadState = driver.executeScript("return document.readyState").toString();
+        }
+
+        if (!driver.getCurrentUrl().equals(this.url)) {
+            return true;
+        }
+        return false;
+    }
+
     private void implicitWaitForNodeIdSearch() {
         try {
             TimeUnit.SECONDS.sleep(5);
@@ -171,37 +107,47 @@ public class ChromeExecution {
         }
     }
 
-    private String getListenerScriptSource(String scriptId) {
-        driver.executeCdpCommand("Debugger.enable", new HashMap());
-        Map query = new HashMap()
-        {{
-            put("scriptId", scriptId);
-        }};
-        Map result = driver.executeCdpCommand("Debugger.getScriptSource", query);
-        return (String) result.get("scriptSource");
+    private void interactWithAllElements() {
+
+        this.xpathListenersMap.forEach(this::triggerListenersOnElementByXPath);
     }
 
-
-    private void interactWithAllElements() {
-        this.xpathListenersMap.forEach(this::triggerListenersOnElementByXPath);
+    private void retryInteractableElements() {
+        // If we can't find the element, we won't go in to retry other interactable elements, if we do find the element, we will recurse but behavior is good
+        System.out.println("-----");
+        Map element;
+        int startSize = retryQueue.size();
+        for (int i=0; i< startSize && (element = retryQueue.poll()) != null; i++) {
+            String xpath = (String) element.get("xpath");
+            ArrayList<Map> listeners = (ArrayList<Map>) element.get("listeners");
+            System.out.println("Retrying: "+xpath);
+            triggerListenersOnElementByXPath(xpath, listeners);
+        }
     }
 
     private void triggerListenersOnElementByXPath(String xpath, ArrayList<Map> listeners) {
         System.out.println(xpath);
         System.out.println(listeners);
         try {
-            WebElement element = driver.findElement(By.xpath(xpath));
+            WebElement element = driver.findElement(By.xpath(xpath)); // It is at this point that a NoSuchElementException is triggered
             listeners.forEach((listener) -> {
                 triggerListener(element, listener);
-//                waitForPageLoad();
-                if (!driver.getCurrentUrl().equals(url)) {
+                if (checkPageChange()) {
                     System.out.println("Page change happened");
                     openPage();
                 }
             });
+            retryInteractableElements();
         } catch(NoSuchElementException ex) {
-            System.out.println("Can't find element");
-            // TODO: Implement retry strategy if we can't find element that has listeners
+            if (listeners.size() > 0) {
+                Map retryMap = new HashMap();
+                retryMap.put("xpath", xpath);
+                retryMap.put("listeners", listeners);
+                retryQueue.add(retryMap);
+                System.out.println("Can't find element, listeners exist, added to retry queue");
+            }  else {
+                System.out.println("Can't find element");
+            }
         } catch(Exception ex) {
             System.out.println("Error occurred " + ex.getMessage());
         }
@@ -233,10 +179,10 @@ public class ChromeExecution {
             } else if (listenerType.equals("change")) {
                 System.out.println("change initiated");
             } else if (listenerType.equals("drag") || listenerType.equals("dragstart") || listenerType.equals("dragend")) {
-                // TODO: Add remaining drag functionality
+                // TODO: Add remaining drag functionality, also add try/catch for each individual drag
                 System.out.println("drag initiated");
-                actions.moveToElement(element).dragAndDropBy(element, 60,0).perform();
-//                actions.moveToElement(element).dragAndDropBy(element, 0,200).perform();
+                actions.moveToElement(element).dragAndDropBy(element, 200,0).perform();
+//                actions.moveToElement(element).dragAndDropBy(element, 0,60).perform();
             }
             else {
                 System.out.println("Unhandled event: "+ listenerType);
@@ -283,26 +229,44 @@ public class ChromeExecution {
         }
     }
 
+    private void getInteractionSequence() {
+        // We want to interact with the elements in document order, this will also help obtain more optimal xpath,
+        // we use absolute xpath addressing to avoid issues with changing indices
+        System.out.println(driver.getPageSource());
+
+    }
+//    public void execute() {
+//        openPage();
+//        implicitWaitForNodeIdSearch();
+//        ArrayList<Long> nodeIds = cdtUtil.getAllElementsNodeIds();
+//        nodeIds.forEach((Long nodeId) -> {
+//            Map nodeIdToObject = cdtUtil.convertNodeIdToObject(nodeId);
+//            if (nodeIdToObject != null) {
+//                String nodeObjectId = (String) nodeIdToObject.get("objectId");
+//                ArrayList<Map> listeners = cdtUtil.getListenersFromObjectId(nodeObjectId);
+//                Map nodeDescription = cdtUtil.getNodeDescription(nodeId);
+//                if (nodeDescription != null) {
+//                    String xpath = cdtUtil.generateXPathFromNodeDescription(nodeDescription);
+//                    xpathListenersMap.put(xpath, listeners); // Assemble all the xpaths first before triggering
+//                }
+//            }
+//        });
+//        new HtmlDocumentUtil(driver);
+////        interactWithAllElements();
+//        collectLogs();
+//        System.out.println("Execution time: " + ((new Date()).getTime() - startTimeMillis));
+//        closeTools();
+//    }
+
     public void execute() {
         openPage();
-        implicitWaitForNodeIdSearch();
-        ArrayList<Long> nodeIds = getAllElementsNodeIds();
-        nodeIds.forEach((Long nodeId) -> {
-            Map nodeIdToObject = convertNodeIdToObject(nodeId);
-            if (nodeIdToObject != null) {
-                String nodeObjectId = (String) nodeIdToObject.get("objectId");
-                ArrayList<Map> listeners = getListenersFromObjectId(nodeObjectId);
-                Map nodeDescription = getNodeDescription(nodeId);
-                if (nodeDescription != null) {
-                    String xpath = generateXPathFromNodeDescription(nodeDescription);
-                    xpathListenersMap.put(xpath, listeners); // Assemble all the xpaths first before triggering
-                }
-            }
+        HtmlDocumentUtil htmlDocumentUtil = new HtmlDocumentUtil(driver);
+        ArrayList<String> xpathList = htmlDocumentUtil.getXpathList();
+        Map<String, ArrayList<Map>> xpathListenerMap = htmlDocumentUtil.getXpathListenerMap();
+        xpathList.forEach((xpath) -> {
+            this.triggerListenersOnElementByXPath(xpath, xpathListenerMap.getOrDefault(xpath, new ArrayList<>()));
         });
-        interactWithAllElements();
-        collectLogs();
-        System.out.println("Execution time: " + ((new Date()).getTime() - startTimeMillis));
-        driver.close();
+
     }
 
 }
