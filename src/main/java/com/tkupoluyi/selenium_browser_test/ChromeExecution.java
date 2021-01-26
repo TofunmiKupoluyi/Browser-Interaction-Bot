@@ -1,5 +1,6 @@
 package com.tkupoluyi.selenium_browser_test;
 
+import org.apache.commons.io.FileUtils;
 import org.openqa.selenium.*;
 import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.chrome.ChromeDriver;
@@ -8,6 +9,7 @@ import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.logging.LogEntries;
 import org.openqa.selenium.logging.LogEntry;
 import org.openqa.selenium.logging.LogType;
+import org.seleniumhq.jetty9.util.IO;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -24,6 +26,7 @@ public class ChromeExecution {
     String outputFileDirectory;
     boolean persistToFile;
     long startTimeMillis;
+    int screenshotCount = 0;
 
     ChromeExecution(String url) {
         Map<String, Object> prefs = new HashMap<String, Object>();
@@ -108,6 +111,15 @@ public class ChromeExecution {
         }
     }
 
+    private void screenshot(int cnt) {
+        File scrFile = ((TakesScreenshot)driver).getScreenshotAs(OutputType.FILE);
+        try {
+            FileUtils.copyFile(scrFile, new File(cnt+".png"));
+        } catch (Exception IOException) {
+            System.out.println("Error in screenshot");
+        }
+    }
+
     private void triggerListenersOnElementByXPath(String xpath, ArrayList<Map> listeners) {
         System.out.println(xpath);
         System.out.println(listeners);
@@ -115,10 +127,12 @@ public class ChromeExecution {
             WebElement element = driver.findElement(By.xpath(xpath)); // It is at this point that a NoSuchElementException is triggered
             listeners.forEach((listener) -> {
                 triggerListener(element, listener);
+                screenshot(this.screenshotCount);
                 if (checkPageChange()) {
                     System.out.println("Page change happened");
                     openPage();
                 }
+                this.screenshotCount+=1;
             });
             retryInteractableElements();
         } catch(NoSuchElementException ex) {
