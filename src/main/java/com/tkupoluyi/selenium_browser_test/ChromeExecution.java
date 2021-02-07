@@ -24,20 +24,14 @@ public class ChromeExecution {
     Queue<Map<String, Object>> retryQueue;
     FileOutputStream outputFile;
     String outputFileDirectory;
+    ChromeOptions chromeOptions;
     boolean persistToFile;
     long startTimeMillis;
     int screenshotCount = 0;
 
     ChromeExecution(String url) {
-        Map<String, Object> prefs = new HashMap<String, Object>();
-        Map<String, Object> mobileEmulation = new HashMap<>();
-        prefs.put("profile.default_content_setting_values.notifications", 2);
-//        mobileEmulation.put("deviceName", "Nexus 5");
-        ChromeOptions options = new ChromeOptions();
-        options.setExperimentalOption("prefs", prefs);
-//        options.setExperimentalOption("mobileEmulation", mobileEmulation);
-        options.addArguments("--ignore-certificate-errors");
-        this.driver = new ChromeDriver(options);
+        setDefaultChromeOptions();
+        this.driver = new ChromeDriver(chromeOptions);
         this.url = url;
         this.xpathListenersMap = new HashMap<>();
         this.persistToFile = false;
@@ -46,11 +40,21 @@ public class ChromeExecution {
     }
 
     ChromeExecution(String url, String outputFileDirectory) {
-        Map<String, Object> prefs = new HashMap<String, Object>();
-        prefs.put("profile.default_content_setting_values.notifications", 2);
-        ChromeOptions options = new ChromeOptions();
-        options.setExperimentalOption("prefs", prefs);
-        this.driver = new ChromeDriver(options);
+        setDefaultChromeOptions();
+        this.driver = new ChromeDriver(chromeOptions);
+        this.url = url;
+        this.xpathListenersMap = new HashMap<>();
+        this.outputFileDirectory = outputFileDirectory;
+        this.persistToFile = true;
+        this.startTimeMillis = (new Date()).getTime();
+        this.outputFile = null;
+
+    }
+
+    ChromeExecution(String url, String outputFileDirectory, String extensionDir) {
+        setDefaultChromeOptions();
+        chromeOptions.addExtensions(new File(extensionDir));
+        this.driver = new ChromeDriver(chromeOptions);
         this.url = url;
         this.xpathListenersMap = new HashMap<>();
         this.outputFileDirectory = outputFileDirectory;
@@ -59,19 +63,15 @@ public class ChromeExecution {
         this.retryQueue = new LinkedList<>();
     }
 
-    ChromeExecution(String url, String outputFileDirectory, String extensionDir) {
+    private void setDefaultChromeOptions() {
         Map<String, Object> prefs = new HashMap<String, Object>();
+        Map<String, Object> mobileEmulation = new HashMap<>();
         prefs.put("profile.default_content_setting_values.notifications", 2);
-        ChromeOptions options = new ChromeOptions();
-        options.setExperimentalOption("prefs", prefs);
-        options.addExtensions(new File(extensionDir));
-        this.driver = new ChromeDriver(options);
-        this.url = url;
-        this.xpathListenersMap = new HashMap<>();
-        this.outputFileDirectory = outputFileDirectory;
-        this.outputFile = null;
-        this.persistToFile = true;
-        this.retryQueue = new LinkedList<>();
+        mobileEmulation.put("deviceName", "Nexus 5");
+        chromeOptions = new ChromeOptions();
+        chromeOptions.setExperimentalOption("prefs", prefs);
+        chromeOptions.setExperimentalOption("mobileEmulation", mobileEmulation);
+        chromeOptions.addArguments("--ignore-certificate-errors");
     }
 
     private void openPage() {
