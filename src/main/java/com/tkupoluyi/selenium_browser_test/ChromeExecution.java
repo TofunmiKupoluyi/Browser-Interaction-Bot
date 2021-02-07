@@ -30,10 +30,13 @@ public class ChromeExecution {
 
     ChromeExecution(String url) {
         Map<String, Object> prefs = new HashMap<String, Object>();
+        Map<String, Object> mobileEmulation = new HashMap<>();
         prefs.put("profile.default_content_setting_values.notifications", 2);
+        mobileEmulation.put("deviceName", "Nexus 5");
         ChromeOptions options = new ChromeOptions();
         options.setExperimentalOption("prefs", prefs);
-//        options.addArguments("--headless", "--disable-gpu", "--window-size=1920,1200","--ignore-certificate-errors");
+        options.setExperimentalOption("mobileEmulation", mobileEmulation);
+        options.addArguments("--ignore-certificate-errors");
         this.driver = new ChromeDriver(options);
         this.url = url;
         this.xpathListenersMap = new HashMap<>();
@@ -127,7 +130,7 @@ public class ChromeExecution {
             WebElement element = driver.findElement(By.xpath(xpath)); // It is at this point that a NoSuchElementException is triggered
             listeners.forEach((listener) -> {
                 triggerListener(element, listener);
-                screenshot(this.screenshotCount);
+//                screenshot(this.screenshotCount);
                 if (checkPageChange()) {
                     System.out.println("Page change happened");
                     openPage();
@@ -234,6 +237,7 @@ public class ChromeExecution {
         xpathList.forEach((xpath) -> {
             this.triggerListenersOnElementByXPath(xpath, xpathListenerMap.getOrDefault(xpath, new ArrayList<>()));
         });
+
         collectLogs();
         System.out.println("Execution time: " + ((new Date()).getTime() - startTimeMillis));
         closeTools();
