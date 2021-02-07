@@ -32,10 +32,10 @@ public class ChromeExecution {
         Map<String, Object> prefs = new HashMap<String, Object>();
         Map<String, Object> mobileEmulation = new HashMap<>();
         prefs.put("profile.default_content_setting_values.notifications", 2);
-        mobileEmulation.put("deviceName", "Nexus 5");
+//        mobileEmulation.put("deviceName", "Nexus 5");
         ChromeOptions options = new ChromeOptions();
         options.setExperimentalOption("prefs", prefs);
-        options.setExperimentalOption("mobileEmulation", mobileEmulation);
+//        options.setExperimentalOption("mobileEmulation", mobileEmulation);
         options.addArguments("--ignore-certificate-errors");
         this.driver = new ChromeDriver(options);
         this.url = url;
@@ -123,6 +123,23 @@ public class ChromeExecution {
         }
     }
 
+    private void closeExtraneousTabs(int limit) {
+        if (driver.getWindowHandles().size() < limit) {
+            return;
+        }
+        else {
+            String originalHandle = driver.getWindowHandle();
+            for (String handle : driver.getWindowHandles()) {
+                if (!handle.equals(originalHandle)) {
+                    driver.switchTo().window(handle);
+                    driver.close();
+                }
+            }
+            driver.switchTo().window(originalHandle);
+        }
+
+    }
+
     private void triggerListenersOnElementByXPath(String xpath, ArrayList<Map> listeners) {
         System.out.println(xpath);
         System.out.println(listeners);
@@ -131,6 +148,7 @@ public class ChromeExecution {
             listeners.forEach((listener) -> {
                 triggerListener(element, listener);
 //                screenshot(this.screenshotCount);
+                closeExtraneousTabs(20);
                 if (checkPageChange()) {
                     System.out.println("Page change happened");
                     openPage();
@@ -160,7 +178,7 @@ public class ChromeExecution {
         try {
             if (listenerType.equals("click") || listenerType.equals("mousedown") || listenerType.equals("mouseup")) {
                 System.out.println("click initiated");
-                actions.moveToElement(element).click(element).build().perform();
+                actions.moveToElement(element).keyDown(Keys.COMMAND).click(element).keyUp(Keys.COMMAND).build().perform();
             } else if (listenerType.equals("mouseover") || listenerType.equals("mouseenter")) {
                 System.out.println("mouseover initiated");
                 actions.moveToElement(element).build().perform();
@@ -170,10 +188,10 @@ public class ChromeExecution {
                 actions.moveByOffset(100,100).build().perform();
             } else if (listenerType.equals("keydown") || listenerType.equals("keypress") || listenerType.equals("keyup")) {
                 System.out.println("keydown initiated");
-                actions.moveToElement(element).click(element).sendKeys("ABCD").perform();
+                actions.moveToElement(element).click(element).sendKeys("ABCD").build().perform();
             } else if (listenerType.equals("dblclick")) {
                 System.out.println("dblclick initiated");
-                actions.moveToElement(element).doubleClick(element).perform();
+                actions.moveToElement(element).keyDown(Keys.COMMAND).doubleClick(element).keyUp(Keys.COMMAND).build().perform();
             } else if (listenerType.equals("load")) {
                 System.out.println("load initiated");
             } else if (listenerType.equals("change")) {
@@ -218,7 +236,9 @@ public class ChromeExecution {
     }
 
     private void closeTools() {
+        closeExtraneousTabs(0);
         driver.close();
+        driver.quit();
         if (outputFile != null) {
             try {
                 outputFile.flush();
