@@ -24,17 +24,13 @@ public class ChromeExecution {
     Queue<Map<String, Object>> retryQueue;
     FileOutputStream outputFile;
     String outputFileDirectory;
+    ChromeOptions chromeOptions;
     boolean persistToFile;
     long startTimeMillis;
     int screenshotCount = 0;
 
     ChromeExecution(String url) {
-        Map<String, Object> prefs = new HashMap<String, Object>();
-        prefs.put("profile.default_content_setting_values.notifications", 2);
-        ChromeOptions options = new ChromeOptions();
-        options.setExperimentalOption("prefs", prefs);
-//        options.addArguments("--headless", "--disable-gpu", "--window-size=1920,1200","--ignore-certificate-errors");
-        this.driver = new ChromeDriver(options);
+        setDefaultChromeOptions();
         this.url = url;
         this.xpathListenersMap = new HashMap<>();
         this.persistToFile = false;
@@ -42,33 +38,15 @@ public class ChromeExecution {
         this.retryQueue = new LinkedList<>();
     }
 
-    ChromeExecution(String url, String outputFileDirectory) {
+    private void setDefaultChromeOptions() {
         Map<String, Object> prefs = new HashMap<String, Object>();
+        Map<String, Object> mobileEmulation = new HashMap<>();
         prefs.put("profile.default_content_setting_values.notifications", 2);
-        ChromeOptions options = new ChromeOptions();
-        options.setExperimentalOption("prefs", prefs);
-        this.driver = new ChromeDriver(options);
-        this.url = url;
-        this.xpathListenersMap = new HashMap<>();
-        this.outputFileDirectory = outputFileDirectory;
-        this.outputFile = null;
-        this.persistToFile = true;
-        this.retryQueue = new LinkedList<>();
-    }
-
-    ChromeExecution(String url, String outputFileDirectory, String extensionDir) {
-        Map<String, Object> prefs = new HashMap<String, Object>();
-        prefs.put("profile.default_content_setting_values.notifications", 2);
-        ChromeOptions options = new ChromeOptions();
-        options.setExperimentalOption("prefs", prefs);
-        options.addExtensions(new File(extensionDir));
-        this.driver = new ChromeDriver(options);
-        this.url = url;
-        this.xpathListenersMap = new HashMap<>();
-        this.outputFileDirectory = outputFileDirectory;
-        this.outputFile = null;
-        this.persistToFile = true;
-        this.retryQueue = new LinkedList<>();
+//        mobileEmulation.put("deviceName", "Nexus 5");
+        chromeOptions = new ChromeOptions();
+        chromeOptions.setExperimentalOption("prefs", prefs);
+        chromeOptions.setExperimentalOption("mobileEmulation", mobileEmulation);
+        chromeOptions.addArguments("--ignore-certificate-errors");
     }
 
     private void openPage() {
@@ -126,13 +104,15 @@ public class ChromeExecution {
         try {
             WebElement element = driver.findElement(By.xpath(xpath)); // It is at this point that a NoSuchElementException is triggered
             listeners.forEach((listener) -> {
-                triggerListener(element, listener);
-                screenshot(this.screenshotCount);
+                if (triggerListener(element, listener)) {
+                    screenshot(this.screenshotCount);
+                    this.screenshotCount+=1;
+                }
                 if (checkPageChange()) {
                     System.out.println("Page change happened");
                     openPage();
                 }
-                this.screenshotCount+=1;
+
             });
             retryInteractableElements();
         } catch(NoSuchElementException ex) {
@@ -151,13 +131,28 @@ public class ChromeExecution {
         System.out.println("-----");
     }
 
-    private void triggerListener(WebElement element, Map listener) {
+    private void screenshotNewTab() {
+        String originalHandle = driver.getWindowHandle();
+        for (String handle : driver.getWindowHandles()) {
+            if (!handle.equals(originalHandle)) {
+                driver.switchTo().window(handle);
+                waitForPageLoad();
+                screenshot(this.screenshotCount);
+                this.screenshotCount+=1;
+                driver.close();
+            }
+        }
+        driver.switchTo().window(originalHandle);
+    }
+
+    private boolean triggerListener(WebElement element, Map listener) {
         String listenerType = (String) listener.get("type");
         Actions actions = new Actions(driver);
         try {
             if (listenerType.equals("click") || listenerType.equals("mousedown") || listenerType.equals("mouseup")) {
                 System.out.println("click initiated");
-                actions.moveToElement(element).click(element).build().perform();
+                actions.moveToElement(element).keyDown(Keys.COMMAND).click(element).keyUp(Keys.COMMAND).build().perform();
+                screenshotNewTab();
             } else if (listenerType.equals("mouseover") || listenerType.equals("mouseenter")) {
                 System.out.println("mouseover initiated");
                 actions.moveToElement(element).build().perform();
@@ -170,9 +165,8 @@ public class ChromeExecution {
                 actions.moveToElement(element).click(element).sendKeys("ABCD").perform();
             } else if (listenerType.equals("dblclick")) {
                 System.out.println("dblclick initiated");
-                actions.moveToElement(element).doubleClick(element).perform();
-            } else if (listenerType.equals("load")) {
-                System.out.println("load initiated");
+                actions.moveToElement(element).keyDown(Keys.COMMAND).doubleClick(element).keyUp(Keys.COMMAND).build().perform();
+                screenshotNewTab();
             } else if (listenerType.equals("change")) {
                 System.out.println("change initiated");
             } else if (listenerType.equals("drag") || listenerType.equals("dragstart") || listenerType.equals("dragend")) {
@@ -183,10 +177,13 @@ public class ChromeExecution {
             }
             else {
                 System.out.println("Unhandled event: "+ listenerType);
+                return false;
             }
         } catch(Exception ex) {
             System.out.println("An error occurred while interacting with element: "+ ex.getClass());
+            return false;
         }
+        return true;
     }
 
     private void collectLogs() {
@@ -226,17 +223,35 @@ public class ChromeExecution {
         }
     }
 
-    public void execute() {
+    public void runForward() {
+        this.driver = new ChromeDriver(chromeOptions);
         openPage();
         HtmlDocumentUtil htmlDocumentUtil = new HtmlDocumentUtil(driver);
         ArrayList<String> xpathList = htmlDocumentUtil.getXpathList();
         Map<String, ArrayList<Map>> xpathListenerMap = htmlDocumentUtil.getXpathListenerMap();
+        // Forward path
         xpathList.forEach((xpath) -> {
-            this.triggerListenersOnElementByXPath(xpath, xpathListenerMap.getOrDefault(xpath, new ArrayList<>()));
+            triggerListenersOnElementByXPath(xpath, xpathListenerMap.getOrDefault(xpath, new ArrayList<>()));
         });
-        collectLogs();
-        System.out.println("Execution time: " + ((new Date()).getTime() - startTimeMillis));
+        openPage();
+        retryInteractableElements();
         closeTools();
+        System.out.println("Execution time: " + ((new Date()).getTime() - startTimeMillis));
+    }
+
+    public void runBackward() {
+        this.driver = new ChromeDriver(chromeOptions);
+        openPage();
+        HtmlDocumentUtil htmlDocumentUtil = new HtmlDocumentUtil(driver);
+        ArrayList<String> xpathList = htmlDocumentUtil.getXpathList();
+        Map<String, ArrayList<Map>> xpathListenerMap = htmlDocumentUtil.getXpathListenerMap();
+        for(int i = xpathList.size()-1; i >= 0; i--) {
+            triggerListenersOnElementByXPath(xpathList.get(i), xpathListenerMap.getOrDefault(xpathList.get(i), new ArrayList<>()));
+        }
+        openPage();
+        retryInteractableElements();
+        closeTools();
+        System.out.println("Execution time: " + ((new Date()).getTime() - startTimeMillis));
     }
 
 }
