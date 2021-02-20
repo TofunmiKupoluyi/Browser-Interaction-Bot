@@ -33,9 +33,24 @@ public class MainExecution {
             } finally {
                 System.out.println("Complete");
             }
-        } else {
+        } else if (args.length <= 3) {
             ChromeExecution forwardExecution = new ChromeExecution(args[0], args[1], args[2]);
             ChromeExecution backwardExecution = new ChromeExecution(args[0], args[1], args[2]);
+            backwardExecution.setBackward();
+
+            forwardExecution.start();
+            backwardExecution.start();
+            try {
+                forwardExecution.join();
+                backwardExecution.join();
+            } catch(InterruptedException e) {
+
+            } finally {
+                System.out.println("Complete");
+            }
+        } else if (args.length <= 4) {
+            ChromeExecution forwardExecution = new ChromeExecution(args[0], args[1], args[2], args[3]);
+            ChromeExecution backwardExecution = new ChromeExecution(args[0], args[1], args[2], args[3]);
             backwardExecution.setBackward();
 
             forwardExecution.start();

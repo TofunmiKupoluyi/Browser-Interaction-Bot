@@ -64,6 +64,19 @@ public class ChromeExecution extends Thread {
         this.retryQueue = new LinkedList<>();
     }
 
+    ChromeExecution(String url, String outputFileDirectory, String extensionDir, String proxyUrl) {
+        setDefaultChromeOptions();
+        chromeOptions.addExtensions(new File(extensionDir));
+        chromeOptions.addArguments("--proxy-server="+proxyUrl);
+        this.driver = new ChromeDriver(chromeOptions);
+        this.url = url;
+        this.xpathListenersMap = new HashMap<>();
+        this.outputFileDirectory = outputFileDirectory;
+        this.outputFile = null;
+        this.persistToFile = true;
+        this.retryQueue = new LinkedList<>();
+    }
+
     private void setDefaultChromeOptions() {
         Map<String, Object> prefs = new HashMap<String, Object>();
         Map<String, Object> mobileEmulation = new HashMap<>();
