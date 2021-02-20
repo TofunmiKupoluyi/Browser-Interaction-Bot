@@ -227,7 +227,7 @@ public class ChromeExecution extends Thread {
             } else if (listenerType.equals("drag") || listenerType.equals("dragstart") || listenerType.equals("dragend")) {
                 // TODO: Add remaining drag functionality, also add try/catch for each individual drag
                 System.out.println("drag initiated");
-                actions.moveToElement(element).dragAndDropBy(element, 200,0).perform();
+                actions.moveToElement(element).dragAndDropBy(element, 100,0).perform();
 //                actions.moveToElement(element).dragAndDropBy(element, 0,60).perform();
             }
             else {
@@ -320,7 +320,8 @@ public class ChromeExecution extends Thread {
         HtmlDocumentUtil htmlDocumentUtil = new HtmlDocumentUtil(driver);
         ArrayList<String> xpathList = htmlDocumentUtil.getXpathList();
         Map<String, ArrayList<Map>> xpathListenerMap = htmlDocumentUtil.getXpathListenerMap();
-
+        scrollToBottom();
+        scrollToTop();
         xpathList.forEach((xpath) -> {
             this.triggerListenersOnElementByXPath(xpath, xpathListenerMap.getOrDefault(xpath, new ArrayList<>()));
         });
