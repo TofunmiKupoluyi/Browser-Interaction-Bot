@@ -17,7 +17,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.*;
 
-public class ChromeExecution {
+public class ChromeExecution extends Thread {
     ChromeDriver driver;
     String url;
     Map<String, ArrayList<Map>> xpathListenersMap;
@@ -28,6 +28,7 @@ public class ChromeExecution {
     boolean persistToFile;
     long startTimeMillis;
     int screenshotCount = 0;
+    boolean isForward = true;
 
     ChromeExecution(String url) {
         setDefaultChromeOptions();
@@ -123,6 +124,14 @@ public class ChromeExecution {
         }
     }
 
+    private void scrollToBottom() {
+        driver.executeScript("window.scrollTo(0, document.body.scrollHeight)");
+    }
+
+    private void scrollToTop() {
+        driver.executeScript("window.scrollTo(0, 0)");
+    }
+
     private void closeExtraneousTabs(int limit) {
         if (driver.getWindowHandles().size() < limit) {
             return;
@@ -148,7 +157,7 @@ public class ChromeExecution {
             listeners.forEach((listener) -> {
                 triggerListener(element, listener);
 //                screenshot(this.screenshotCount);
-                closeExtraneousTabs(20);
+                closeExtraneousTabs(10);
                 if (checkPageChange()) {
                     System.out.println("Page change happened");
                     openPage();
@@ -178,7 +187,13 @@ public class ChromeExecution {
         try {
             if (listenerType.equals("click") || listenerType.equals("mousedown") || listenerType.equals("mouseup")) {
                 System.out.println("click initiated");
-                actions.moveToElement(element).keyDown(Keys.COMMAND).click(element).keyUp(Keys.COMMAND).build().perform();
+                try {
+                    actions.moveToElement(element).keyDown(Keys.COMMAND).click(element).keyUp(Keys.COMMAND).build().perform();
+                    actions.moveToElement(element).keyDown(Keys.COMMAND).click(element).keyUp(Keys.COMMAND).build().perform();
+                    actions.moveToElement(element).keyDown(Keys.COMMAND).click(element).keyUp(Keys.COMMAND).build().perform();
+                } catch(Exception e) {
+
+                }
             } else if (listenerType.equals("mouseover") || listenerType.equals("mouseenter")) {
                 System.out.println("mouseover initiated");
                 actions.moveToElement(element).build().perform();
@@ -225,7 +240,7 @@ public class ChromeExecution {
     private void writeToFile(String log) {
         try {
             if (outputFile == null) {
-                outputFile = new FileOutputStream(outputFileDirectory);
+                outputFile = new FileOutputStream(outputFileDirectory, true);
             }
             outputFile.write(log.getBytes());
         } catch (FileNotFoundException ex) {
@@ -249,11 +264,50 @@ public class ChromeExecution {
         }
     }
 
+    public void runForward() {
+        openPage();
+        HtmlDocumentUtil htmlDocumentUtil = new HtmlDocumentUtil(driver);
+        ArrayList<String> xpathList = htmlDocumentUtil.getXpathList();
+        Map<String, ArrayList<Map>> xpathListenerMap = htmlDocumentUtil.getXpathListenerMap();
+        scrollToBottom();
+        scrollToTop();
+
+        xpathList.forEach((xpath) -> {
+            triggerListenersOnElementByXPath(xpath, xpathListenerMap.getOrDefault(xpath, new ArrayList<>()));
+        });
+
+        openPage();
+        retryInteractableElements();
+        collectLogs();
+        closeTools();
+        System.out.println("Execution time: " + ((new Date()).getTime() - startTimeMillis));
+    }
+
+    public void runBackward() {
+        openPage();
+        HtmlDocumentUtil htmlDocumentUtil = new HtmlDocumentUtil(driver);
+        ArrayList<String> xpathList = htmlDocumentUtil.getXpathList();
+        Map<String, ArrayList<Map>> xpathListenerMap = htmlDocumentUtil.getXpathListenerMap();
+        scrollToBottom();
+        scrollToTop();
+
+        for(int i = xpathList.size()-1; i >= 0; i--) {
+            triggerListenersOnElementByXPath(xpathList.get(i), xpathListenerMap.getOrDefault(xpathList.get(i), new ArrayList<>()));
+        }
+
+        openPage();
+        retryInteractableElements();
+        collectLogs();
+        closeTools();
+        System.out.println("Execution time: " + ((new Date()).getTime() - startTimeMillis));
+    }
+
     public void execute() {
         openPage();
         HtmlDocumentUtil htmlDocumentUtil = new HtmlDocumentUtil(driver);
         ArrayList<String> xpathList = htmlDocumentUtil.getXpathList();
         Map<String, ArrayList<Map>> xpathListenerMap = htmlDocumentUtil.getXpathListenerMap();
+
         xpathList.forEach((xpath) -> {
             this.triggerListenersOnElementByXPath(xpath, xpathListenerMap.getOrDefault(xpath, new ArrayList<>()));
         });
@@ -261,6 +315,19 @@ public class ChromeExecution {
         collectLogs();
         System.out.println("Execution time: " + ((new Date()).getTime() - startTimeMillis));
         closeTools();
+    }
+
+    public void setBackward() {
+        isForward = false;
+    }
+
+    @Override
+    public void run() {
+        if (isForward) {
+            runForward();
+        }   else {
+            runBackward();
+        }
     }
 
 }
