@@ -9,7 +9,7 @@ With this setup, you can run the tool by executing:
 java -jar browser_run.jar [url_to_run] [output_log] [path_to_chrome_extension] [url_of_proxy]
 ```
 <br/>
-The ```browser_run.jar``` file is included in the root of this project.
+The browser_run.jar file is included in the root of this project.
 
 ## What Happens When You Run?
 - We open the page on two windows.
