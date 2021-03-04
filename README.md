@@ -12,10 +12,10 @@ java -jar browser_run.jar [url_to_run] [output_log] [path_to_chrome_extension] [
 The ```browser_run.jar``` file is included in the root of this project.
 
 ## What Happens When You Run?
-We open the page on two windows.<br/>
-We identify all the elements on the page via a depth-first-search over the HTML document.<br/>
-From this list of elements, we identify all the event listeners attached to each element using the ChromeDevTools protocol.<br/>
-On the first window, we traverse the list of elements, simulating each event that may occur. The events currently covered include:<br/>
+We open the page on two windows.<br/><br/>
+We identify all the elements on the page via a depth-first-search over the HTML document.<br/><br/>
+From this list of elements, we identify all the event listeners attached to each element using the ChromeDevTools protocol.<br/><br/>
+On the first window, we traverse the list of elements, simulating each event that may occur. The events currently covered include:<br/><br/>
 ```click```
 ```mousedown```
 ```mouseup```
@@ -34,6 +34,6 @@ On the first window, we traverse the list of elements, simulating each event tha
 ```change```
 ```drag```
 ```dragstart```
-```dragend```<br/>
+```dragend```<br/><br/>
 Please feel free to extend this list by creating Selenium actions for events not currently covered.
 On the second window, we do the same but traverse the list backwards. In addition to creating redundancy, this also helps in situations where on the first traversal, we open elements that we cannot close due to the order of the elements on the HTML document.
