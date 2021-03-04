@@ -28,6 +28,7 @@ public class ChromeExecution extends Thread {
     long startTimeMillis;
     int screenshotCount = 0;
     boolean isForward = true;
+    boolean isMac = System.getProperty("os.name").equals("Mac OS X");
 
     ChromeExecution(String url) {
         setDefaultChromeOptions();
@@ -83,7 +84,7 @@ public class ChromeExecution extends Thread {
         mobileEmulation.put("deviceName", "Nexus 5");
         chromeOptions = new ChromeOptions();
         chromeOptions.setExperimentalOption("prefs", prefs);
-        chromeOptions.setExperimentalOption("mobileEmulation", mobileEmulation);
+//        chromeOptions.setExperimentalOption("mobileEmulation", mobileEmulation);
         chromeOptions.addArguments("--ignore-certificate-errors");
 //        chromeOptions.addArguments("--headless");
     }
@@ -189,13 +190,13 @@ public class ChromeExecution extends Thread {
 
     private void triggerListener(WebElement element, Map listener) {
         String listenerType = (String) listener.get("type");
+        Keys controlKey = isMac ? Keys.COMMAND : Keys.CONTROL;
         Actions actions = new Actions(driver);
         try {
             if (listenerType.equals("click") || listenerType.equals("mousedown") || listenerType.equals("mouseup") || listenerType.equals("focus") || listenerType.equals("blur")) {
                 try {
-                    actions.moveToElement(element).keyDown(Keys.CONTROL).click(element).keyUp(Keys.CONTROL).build().perform();
-                    actions.moveToElement(element).keyDown(Keys.CONTROL).click(element).keyUp(Keys.CONTROL).build().perform();
-                    actions.moveToElement(element).keyDown(Keys.CONTROL).click(element).keyUp(Keys.CONTROL).build().perform();
+                    actions.moveToElement(element).keyDown(controlKey).click(element).keyUp(controlKey).build().perform();
+                    actions.moveToElement(element).keyDown(controlKey).click(element).keyUp(controlKey).build().perform();
                 } catch(Exception e) {
 
                 }
@@ -207,7 +208,7 @@ public class ChromeExecution extends Thread {
             } else if (listenerType.equals("keydown") || listenerType.equals("keypress") || listenerType.equals("keyup") || listenerType.equals("input")) {
                 actions.moveToElement(element).click(element).sendKeys("ABCD").build().perform();
             } else if (listenerType.equals("dblclick")) {
-                actions.moveToElement(element).keyDown(Keys.CONTROL).doubleClick(element).keyUp(Keys.CONTROL).build().perform();
+                actions.moveToElement(element).keyDown(controlKey).doubleClick(element).keyUp(controlKey).build().perform();
             } else if (listenerType.equals("load")) {
             } else if (listenerType.equals("change")) {
                 actions.moveToElement(element).click(element).sendKeys("ABCD").build().perform();
