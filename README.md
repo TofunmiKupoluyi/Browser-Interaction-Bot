@@ -34,6 +34,6 @@ The browser_run.jar file is included in the root of this project.
 ```change```
 ```drag```
 ```dragstart```
-```dragend```
+```dragend```\
 Please feel free to extend this list by creating Selenium actions for events not currently covered.
 - On the second window, we traverse the dfs list of elements in reverse, simulating the same interactions. In addition to creating redundancy, this also helps in situations where on the first page, we open elements that we cannot close due to the order of the elements on the HTML document.
