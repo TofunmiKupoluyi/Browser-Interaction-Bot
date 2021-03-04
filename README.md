@@ -3,15 +3,16 @@ This is a bot that attempts to identify all interactable elements within a page 
 
 ## Execution
 To run this tool, ensure you have Java, Chrome and the corresponding version of <a href="https://chromedriver.chromium.org/downloads">ChromeDriver</a> installed.<br/>
-With this setup, you can run the tool by executing:<br/>
+With this setup, you can run the tool by executing:
+<br/>
 ```
-java -jar browser_run.jar
+java -jar browser_run.jar [url_to_run] [output_log] [path_to_chrome_extension] [url_of_proxy]
 ```
 <br/>
 The ```browser_run.jar``` file is included in the root of this project.
 
 ## What Happens When You Run?
-We open the page (on two windows, we will cover why two windows shortly).<br/>
+We open the page on two windows.<br/>
 We identify all the elements on the page via a depth-first-search over the HTML document.<br/>
 From this list of elements, we identify all the event listeners attached to each element using the ChromeDevTools protocol.<br/>
 On the first window, we traverse the list of elements, simulating each event that may occur. The events currently covered include:<br/>
