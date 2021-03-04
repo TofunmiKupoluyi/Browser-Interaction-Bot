@@ -9,7 +9,6 @@ import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.logging.LogEntries;
 import org.openqa.selenium.logging.LogEntry;
 import org.openqa.selenium.logging.LogType;
-import org.seleniumhq.jetty9.util.IO;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -305,21 +304,6 @@ public class ChromeExecution extends Thread {
 
         openPage();
         retryInteractableElements();
-        collectLogs();
-        closeTools();
-    }
-
-    public void execute() {
-        openPage();
-        HtmlDocumentUtil htmlDocumentUtil = new HtmlDocumentUtil(driver);
-        ArrayList<String> xpathList = htmlDocumentUtil.getXpathList();
-        Map<String, ArrayList<Map>> xpathListenerMap = htmlDocumentUtil.getXpathListenerMap();
-        scrollToBottom();
-        scrollToTop();
-        xpathList.forEach((xpath) -> {
-            this.triggerListenersOnElementByXPath(xpath, xpathListenerMap.getOrDefault(xpath, new ArrayList<>()));
-        });
-
         collectLogs();
         closeTools();
     }
