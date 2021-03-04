@@ -7,7 +7,6 @@ public class MainExecution {
     public static void main(String[] args) throws IOException {
         for (int i=0; i< args.length; i++) {System.out.println(args[i]);}
         if (args.length <= 1) {
-            (new FileOutputStream("output.txt")).close();
             ChromeExecution forwardExecution = new ChromeExecution("https://edition.cnn.com/");
             ChromeExecution backwardExecution = new ChromeExecution("https://edition.cnn.com/");
             backwardExecution.setBackward();
