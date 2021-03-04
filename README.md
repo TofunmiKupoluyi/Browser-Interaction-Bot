@@ -10,7 +10,7 @@ java -jar browser_run.jar
 <br/>
 The ```browser_run.jar``` file is included in the root of this project.
 
-### What Happens?
+## What Happens When You Run?
 We open the page (on two windows, we will cover why two windows shortly).<br/>
 We identify all the elements on the page via a depth-first-search over the HTML document.<br/>
 From this list of elements, we identify all the event listeners attached to each element using the ChromeDevTools protocol.<br/>
