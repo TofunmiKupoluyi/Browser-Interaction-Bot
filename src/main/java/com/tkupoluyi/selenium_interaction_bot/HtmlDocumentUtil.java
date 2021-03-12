@@ -1,7 +1,8 @@
-package com.tkupoluyi.selenium_browser_test;
+package com.tkupoluyi.selenium_interaction_bot;
 
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.openqa.selenium.InvalidArgumentException;
 import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.jsoup.*;
@@ -17,6 +18,7 @@ public class HtmlDocumentUtil {
     private Map<String, ArrayList<Map>> xpathListenerMap;
     private Map<String, Integer> globalXpathMap;
     private ChromeDriver driver;
+
     HtmlDocumentUtil(ChromeDriver driver) {
         this.doc = Jsoup.parse(driver.getPageSource());
         this.driver = driver;
@@ -34,7 +36,7 @@ public class HtmlDocumentUtil {
         for (int i = 0; i< root.childrenSize(); i++) {
             Element child = root.child(i);
             String tagName = child.tagName();
-            if (!tagName.equals("link") && !tagName.equals("script") && !tagName.equals("style") && !tagName.equals("svg") && !tagName.equals("img")) {
+            if (!tagName.equals("link") && !tagName.equals("script") && !tagName.equals("style") && !tagName.equals("svg") && !tagName.equals("img") && !tagName.equals("meta") && !tagName.equals("noscript")) {
                 int currTagIndex = map.getOrDefault(tagName, 0) + 1;
                 map.put(tagName, currTagIndex);
                 if (child.attributes().hasKey("id")) {
@@ -60,7 +62,7 @@ public class HtmlDocumentUtil {
             String objectId = (String) result.get("objectId");
             ArrayList<Map> listeners = getEventListenersByObjectId(objectId);
             return listeners;
-        } catch (WebDriverException ex) {
+        } catch(InvalidArgumentException ex) {
             System.out.println("Trouble locating xpath, " + xpath);
         }
         return (new ArrayList<Map>());

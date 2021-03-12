@@ -8,7 +8,7 @@
         <maven.compiler.target>1.8</maven.compiler.target>
     </properties>
     <groupId>com.tkupoluyi.selenium_browser_test</groupId>
-    <artifactId>selenium_browser_test</artifactId>
+    <artifactId>selenium_interaction_bot</artifactId>
     <packaging>jar</packaging>
     <version>1.0-SNAPSHOT</version>
     <dependencies>
@@ -55,7 +55,7 @@
                         <configuration>
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>com.tkupoluyi.selenium_browser_test.MainExecution</mainClass>
+                                    <mainClass>com.tkupoluyi.selenium_interaction_bot.MainExecution</mainClass>
                                 </transformer>
                             </transformers>
                         </configuration>

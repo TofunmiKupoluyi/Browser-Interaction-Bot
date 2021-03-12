@@ -1,19 +1,18 @@
-package com.tkupoluyi.selenium_browser_test;
+package com.tkupoluyi.selenium_interaction_bot;
 
 import org.apache.commons.io.FileUtils;
 import org.openqa.selenium.*;
-import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.chrome.ChromeDriverService;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
+import org.openqa.selenium.interactions.MoveTargetOutOfBoundsException;
 import org.openqa.selenium.logging.LogEntries;
 import org.openqa.selenium.logging.LogEntry;
 import org.openqa.selenium.logging.LogType;
+import org.openqa.selenium.remote.UnreachableBrowserException;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.util.*;
 
 public class ChromeExecution extends Thread {
@@ -24,15 +23,18 @@ public class ChromeExecution extends Thread {
     FileOutputStream outputFile;
     String outputFileDirectory;
     ChromeOptions chromeOptions;
+    ChromeDriverService chromeDriverService;
     boolean persistToFile;
     long startTimeMillis;
     int screenshotCount = 0;
     boolean isForward = true;
     boolean isMac = System.getProperty("os.name").equals("Mac OS X");
+    boolean isError = false;
+    int unreachableCnt = 0;
 
     ChromeExecution(String url) {
         setDefaultChromeOptions();
-        this.driver = new ChromeDriver(chromeOptions);
+        this.driver = new ChromeDriver(chromeDriverService, chromeOptions);
         this.url = url;
         this.xpathListenersMap = new HashMap<>();
         this.persistToFile = false;
@@ -42,7 +44,7 @@ public class ChromeExecution extends Thread {
 
     ChromeExecution(String url, String outputFileDirectory) {
         setDefaultChromeOptions();
-        this.driver = new ChromeDriver(chromeOptions);
+        this.driver = new ChromeDriver(chromeDriverService, chromeOptions);
         this.url = url;
         this.xpathListenersMap = new HashMap<>();
         this.outputFileDirectory = outputFileDirectory;
@@ -55,7 +57,7 @@ public class ChromeExecution extends Thread {
     ChromeExecution(String url, String outputFileDirectory, String extensionDir) {
         setDefaultChromeOptions();
         chromeOptions.addExtensions(new File(extensionDir));
-        this.driver = new ChromeDriver(chromeOptions);
+        this.driver = new ChromeDriver(chromeDriverService, chromeOptions);
         this.url = url;
         this.xpathListenersMap = new HashMap<>();
         this.outputFileDirectory = outputFileDirectory;
@@ -68,7 +70,7 @@ public class ChromeExecution extends Thread {
         setDefaultChromeOptions();
         chromeOptions.addExtensions(new File(extensionDir));
         chromeOptions.addArguments("--proxy-server="+proxyUrl);
-        this.driver = new ChromeDriver(chromeOptions);
+        this.driver = new ChromeDriver(chromeDriverService, chromeOptions);
         this.url = url;
         this.xpathListenersMap = new HashMap<>();
         this.outputFileDirectory = outputFileDirectory;
@@ -84,8 +86,10 @@ public class ChromeExecution extends Thread {
         mobileEmulation.put("deviceName", "Nexus 5");
         chromeOptions = new ChromeOptions();
         chromeOptions.setExperimentalOption("prefs", prefs);
-//        chromeOptions.setExperimentalOption("mobileEmulation", mobileEmulation);
+        chromeOptions.setExperimentalOption("mobileEmulation", mobileEmulation);
         chromeOptions.addArguments("--ignore-certificate-errors");
+        chromeOptions.addArguments("--no-sandbox");
+        chromeDriverService = ChromeDriverService.createDefaultService();
 //        chromeOptions.addArguments("--headless");
     }
 
@@ -93,6 +97,19 @@ public class ChromeExecution extends Thread {
         driver.get(url);
         waitForPageLoad();
         this.url = driver.getCurrentUrl(); // This sets url to what it is when page has loaded
+    }
+
+    private void getProcessId() {
+        try {
+            String[] command = {"/bin/sh", "sudo lsof -t -i:" + chromeDriverService.getUrl().getPort()};
+            Process p = Runtime.getRuntime().exec(command);
+            p.waitFor();
+            BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()));
+            String line;
+            while ((line = reader.readLine()) != null) {
+                System.out.println(line);
+            }
+        } catch (IOException | InterruptedException ignore) { }
     }
 
     private void waitForPageLoad() {
@@ -149,19 +166,23 @@ public class ChromeExecution extends Thread {
             return;
         }
         else {
-            String originalHandle = driver.getWindowHandle();
-            for (String handle : driver.getWindowHandles()) {
-                if (!handle.equals(originalHandle)) {
-                    driver.switchTo().window(handle);
-                    driver.close();
+            try {
+                String originalHandle = driver.getWindowHandle();
+                for (String handle : driver.getWindowHandles()) {
+                    if (!handle.equals(originalHandle)) {
+                        driver.switchTo().window(handle);
+                        driver.close();
+                    }
                 }
+                driver.switchTo().window(originalHandle);
+            } catch (NoSuchWindowException ex) {
+                System.out.println("Window already closed");
             }
-            driver.switchTo().window(originalHandle);
         }
 
     }
 
-    private void triggerListenersOnElementByXPath(String xpath, ArrayList<Map> listeners, boolean... stopRetry) {
+    private boolean triggerListenersOnElementByXPath(String xpath, ArrayList<Map> listeners, boolean... stopRetry) {
         try {
             WebElement element = driver.findElement(By.xpath(xpath)); // It is at this point that a NoSuchElementException is triggered
             listeners.forEach((listener) -> {
@@ -176,35 +197,43 @@ public class ChromeExecution extends Thread {
             if (stopRetry.length == 0) {
                 retryInteractableElements();
             }
-        } catch(NoSuchElementException ex) {
+            unreachableCnt = 0;
+            return true;
+        }
+        catch (NotFoundException | StaleElementReferenceException ex) {
             if (listeners.size() > 0) {
                 Map retryMap = new HashMap();
                 retryMap.put("xpath", xpath);
                 retryMap.put("listeners", listeners);
                 retryQueue.add(retryMap);
             }
-        } catch(Exception ex) {
-            System.out.println("Error occurred " + ex.getMessage());
+            return true;
+        }
+        catch (UnreachableBrowserException ex) {
+            unreachableCnt += 1;
+            if (unreachableCnt < 30) {
+                System.out.println("Browser Unreachable. Retrying in 1 second, "+(unreachableCnt)+"/30");
+                try { sleep(1000); } catch (InterruptedException ignore) { }
+                return false;
+            }
+            throw ex;
         }
     }
 
     private void triggerListener(WebElement element, Map listener) {
-        String listenerType = (String) listener.get("type");
-        Keys controlKey = isMac ? Keys.COMMAND : Keys.CONTROL;
-        Actions actions = new Actions(driver);
         try {
+            String listenerType = (String) listener.get("type");
+            Keys controlKey = isMac ? Keys.COMMAND : Keys.CONTROL;
+            Actions actions = new Actions(driver);
             if (listenerType.equals("click") || listenerType.equals("mousedown") || listenerType.equals("mouseup") || listenerType.equals("focus") || listenerType.equals("blur")) {
-                try {
-                    actions.moveToElement(element).keyDown(controlKey).click(element).keyUp(controlKey).build().perform();
-                    actions.moveToElement(element).keyDown(controlKey).click(element).keyUp(controlKey).build().perform();
-                } catch(Exception e) {
-
-                }
+                actions.moveToElement(element).keyDown(controlKey).click(element).keyUp(controlKey).build().perform();
+                actions.moveToElement(element).keyDown(controlKey).click(element).keyUp(controlKey).build().perform();
+                actions.moveToElement(element).keyDown(controlKey).click(element).keyUp(controlKey).build().perform();
             } else if (listenerType.equals("mouseover") || listenerType.equals("mouseenter")) {
                 actions.moveToElement(element).build().perform();
             } else if (listenerType.equals("mouseout") || listenerType.equals("mouseleave")) {
                 actions.moveToElement(element).build().perform();
-                actions.moveByOffset(100,100).build().perform();
+                actions.moveByOffset(100, 100).build().perform();
             } else if (listenerType.equals("keydown") || listenerType.equals("keypress") || listenerType.equals("keyup") || listenerType.equals("input")) {
                 actions.moveToElement(element).click(element).sendKeys("ABCD").build().perform();
             } else if (listenerType.equals("dblclick")) {
@@ -213,15 +242,16 @@ public class ChromeExecution extends Thread {
             } else if (listenerType.equals("change")) {
                 actions.moveToElement(element).click(element).sendKeys("ABCD").build().perform();
             } else if (listenerType.equals("drag") || listenerType.equals("dragstart") || listenerType.equals("dragend")) {
-                actions.moveToElement(element).dragAndDropBy(element, 100,0).perform();
+                actions.moveToElement(element).dragAndDropBy(element, 100, 0).perform();
 //                actions.moveToElement(element).dragAndDropBy(element, 0,60).perform();
+            } else {
+                System.out.println("Unhandled event: " + listenerType);
             }
-            else {
-                System.out.println("Unhandled event: "+ listenerType);
-            }
-        } catch(Exception ex) {
-            System.out.println("An error occurred while interacting with element: "+ ex.getClass());
+        } catch(MoveTargetOutOfBoundsException | JavascriptException ex) {
+            System.out.println("Non-Fatal Error Occured: "+ ex.getClass());
+            System.out.println(element + " " + listener);
         }
+
     }
 
     private void collectLogs() {
@@ -249,14 +279,39 @@ public class ChromeExecution extends Thread {
 
     private void closeTools() {
         closeExtraneousTabs(0);
-        driver.close();
-        driver.quit();
         if (outputFile != null) {
             try {
                 outputFile.flush();
                 outputFile.close();
             } catch(IOException ex) {
                 System.out.println("Error occured while closing stream");
+            }
+        }
+
+        try {
+            driver.close();
+            driver.quit();
+        } catch (NoSuchWindowException ex) {
+            System.out.println("Window already closed");
+        }
+    }
+
+    private void iterateThroughXpathList(ArrayList<String> xpathList, Map<String, ArrayList<Map>> xpathListenerMap, int direction) {
+        if (direction == 1) {
+            int i = 0;
+            while (i < xpathList.size()) {
+                // Returns false if the browser is unreachable
+                if (triggerListenersOnElementByXPath(xpathList.get(i), xpathListenerMap.getOrDefault(xpathList.get(i), new ArrayList<>()))) {
+                    i++;
+                }
+            }
+        } else {
+            int i = xpathList.size()-1;
+            while (i >= 0) {
+                // Returns false if the browser is unreachable
+                if (triggerListenersOnElementByXPath(xpathList.get(i), xpathListenerMap.getOrDefault(xpathList.get(i), new ArrayList<>()))) {
+                    i--;
+                }
             }
         }
     }
@@ -275,9 +330,7 @@ public class ChromeExecution extends Thread {
         scrollToBottom();
         scrollToTop();
 
-        xpathList.forEach((xpath) -> {
-            triggerListenersOnElementByXPath(xpath, xpathListenerMap.getOrDefault(xpath, new ArrayList<>()));
-        });
+        iterateThroughXpathList(xpathList, xpathListenerMap, 1);
 
         openPage();
         retryInteractableElements();
@@ -298,11 +351,7 @@ public class ChromeExecution extends Thread {
         Map<String, ArrayList<Map>> xpathListenerMap = htmlDocumentUtil.getXpathListenerMap();
         scrollToBottom();
         scrollToTop();
-
-        for(int i = xpathList.size()-1; i >= 0; i--) {
-            triggerListenersOnElementByXPath(xpathList.get(i), xpathListenerMap.getOrDefault(xpathList.get(i), new ArrayList<>()));
-        }
-
+        iterateThroughXpathList(xpathList, xpathListenerMap, -1);
         openPage();
         retryInteractableElements();
         collectLogs();
@@ -316,9 +365,30 @@ public class ChromeExecution extends Thread {
     @Override
     public void run() {
         if (isForward) {
-            runForward();
-        }   else {
-            runBackward();
+            try {
+                runForward();
+            } catch(Exception ex) {
+                System.out.println("Fatal error occurred in forward thread: "+ex.getClass());
+                isError = true;
+                try {
+                    collectLogs();
+                    closeTools();
+                } catch(UnreachableBrowserException ignored) { }
+                interrupt();
+            }
+        }
+        else {
+            try {
+                runBackward();
+            } catch(Exception ex) {
+                System.out.println("Fatal error occurred in backward thread: "+ex.getClass());
+                isError = true;
+                try {
+                    collectLogs();
+                    closeTools();
+                } catch (Exception ignored) { }
+                interrupt();
+            }
         }
     }
 
