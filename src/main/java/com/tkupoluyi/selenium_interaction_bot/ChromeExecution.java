@@ -89,8 +89,9 @@ public class ChromeExecution extends Thread {
         chromeOptions.setExperimentalOption("mobileEmulation", mobileEmulation);
         chromeOptions.addArguments("--ignore-certificate-errors");
         chromeOptions.addArguments("--no-sandbox");
+        chromeOptions.addArguments("--headless");
         chromeDriverService = ChromeDriverService.createDefaultService();
-//        chromeOptions.addArguments("--headless");
+
     }
 
     private void openPage() {
