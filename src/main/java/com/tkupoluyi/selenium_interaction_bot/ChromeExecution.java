@@ -101,15 +101,18 @@ public class ChromeExecution extends Thread {
 
     private void getProcessId() {
         try {
-            String[] command = {"/bin/sh", "sudo lsof -t -i:" + chromeDriverService.getUrl().getPort()};
-            Process p = Runtime.getRuntime().exec(command);
-            p.waitFor();
-            BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()));
+            System.out.println("GETTING PROCESS ID FOR PORT: " + chromeDriverService.getUrl().getPort()+ " " + Integer.toString(chromeDriverService.getUrl().getPort()));
+            String[] cmd = {"/bin/bash","-c","echo password| sudo -S ls -t -i:", Integer.toString(chromeDriverService.getUrl().getPort())};
+            Process pb = Runtime.getRuntime().exec(cmd);
             String line;
-            while ((line = reader.readLine()) != null) {
+            BufferedReader input = new BufferedReader(new InputStreamReader(pb.getInputStream()));
+            while ((line = input.readLine()) != null) {
                 System.out.println(line);
             }
-        } catch (IOException | InterruptedException ignore) { }
+            input.close();
+        } catch (IOException ignore) {
+            System.out.println("ERROR GETTING PROCESS ID: "+ ignore.getMessage());
+        }
     }
 
     private void waitForPageLoad() {
@@ -247,10 +250,7 @@ public class ChromeExecution extends Thread {
             } else {
                 System.out.println("Unhandled event: " + listenerType);
             }
-        } catch(MoveTargetOutOfBoundsException | JavascriptException ex) {
-            System.out.println("Non-Fatal Error Occured: "+ ex.getClass());
-            System.out.println(element + " " + listener);
-        }
+        } catch(MoveTargetOutOfBoundsException | JavascriptException ignored) { }
 
     }
 
@@ -329,7 +329,6 @@ public class ChromeExecution extends Thread {
         Map<String, ArrayList<Map>> xpathListenerMap = htmlDocumentUtil.getXpathListenerMap();
         scrollToBottom();
         scrollToTop();
-
         iterateThroughXpathList(xpathList, xpathListenerMap, 1);
 
         openPage();
@@ -373,7 +372,7 @@ public class ChromeExecution extends Thread {
                 try {
                     collectLogs();
                     closeTools();
-                } catch(UnreachableBrowserException ignored) { }
+                } catch(Exception ignored) { }
                 interrupt();
             }
         }
