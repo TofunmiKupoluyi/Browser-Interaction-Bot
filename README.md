@@ -1,4 +1,4 @@
-# PageInteractionBot
+# BrowserInteractionBot
 This is a bot that attempts to identify all interactable elements within a page and interact with them. It relies on Selenium (with ChromeDevTools) and  ChromeDriver.
 
 ## Execution
