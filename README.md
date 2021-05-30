@@ -6,7 +6,7 @@ To run this tool, ensure you have Java, Chrome and the corresponding version of 
 With this setup, you can run the tool by executing:
 <br/>
 ```
-java -jar browser_run.jar [url_to_run] [output_directory] [url_of_proxy]
+java -jar browser_interaction_bot.jar [url_to_run] [output_directory] [url_of_proxy]
 ```
 <br/>
 The browser_run.jar file is included in the root of this project.

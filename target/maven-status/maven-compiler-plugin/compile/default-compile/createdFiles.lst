@@ -1,0 +1,12 @@
+com/tkupoluyi/browser_interaction_bot/HTMLDocumentUtil$1.class
+com/tkupoluyi/browser_interaction_bot/DOTFileBuilder.class
+com/tkupoluyi/browser_interaction_bot/HTMLDocumentUtil.class
+com/tkupoluyi/browser_interaction_bot/event_handling/DefaultEventHandler.class
+com/tkupoluyi/browser_interaction_bot/BrowserInteractions.class
+com/tkupoluyi/browser_interaction_bot/HTMLDocumentUtil$2.class
+com/tkupoluyi/browser_interaction_bot/ChromeExecutionFromTrace.class
+com/tkupoluyi/browser_interaction_bot/exceptions/InteractionBotException.class
+com/tkupoluyi/browser_interaction_bot/ChromeExecution.class
+com/tkupoluyi/browser_interaction_bot/MainExecution.class
+com/tkupoluyi/browser_interaction_bot/Event.class
+com/tkupoluyi/browser_interaction_bot/event_handling/EventHandler.class
