@@ -37,3 +37,9 @@ The browser_run.jar file is included in the root of this project.
 ```dragstart```
 ```dragend```\
 Please feel free to create custom event handlers to extend the list of handled events or even improve on the implementation of currently handled events. The default event handler is contained in the "event_handling" folder.
+
+## Sample Output
+
+This is the event dependency graph generated from colorado.edu. The nodes are described as "xpath | event". <a href="https://developer.mozilla.org/en-US/docs/Web/XPath">Xpath</a> is a means of identifying elements on a page.
+
+<img src="colorado.edu.svg"></img>
