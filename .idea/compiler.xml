@@ -6,11 +6,12 @@
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
-        <module name="selenium_browser_test" />
-        <module name="PageInteractionBot" />
+        <module name="browser_interaction_bot" />
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
+      <module name="PageInteractionBot" target="9" />
+      <module name="selenium_browser_test" target="9" />
       <module name="selenium_test_java" target="1.8" />
     </bytecodeTargetLevel>
   </component>

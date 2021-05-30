@@ -7,10 +7,10 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
     </properties>
-    <groupId>com.tkupoluyi.selenium_browser_test</groupId>
-    <artifactId>selenium_browser_test</artifactId>
+    <groupId>com.tkupoluyi.browser_interaction_bot</groupId>
+    <artifactId>browser_interaction_bot</artifactId>
     <packaging>jar</packaging>
-    <version>1.0-SNAPSHOT</version>
+    <version>1.0</version>
     <dependencies>
         <dependency>
             <groupId>org.seleniumhq.selenium</groupId>
@@ -37,6 +37,16 @@
             <artifactId>commons-io</artifactId>
             <version>2.6</version>
         </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>2.11.1</version>
+        </dependency>
+        <dependency>
+            <groupId>com.googlecode.json-simple</groupId>
+            <artifactId>json-simple</artifactId>
+            <version>1.1.1</version>
+        </dependency>
     </dependencies>
     <build>
         <plugins>
@@ -55,7 +65,7 @@
                         <configuration>
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>com.tkupoluyi.selenium_browser_test.MainExecution</mainClass>
+                                    <mainClass>com.tkupoluyi.browser_interaction_bot.MainExecution</mainClass>
                                 </transformer>
                             </transformers>
                         </configuration>

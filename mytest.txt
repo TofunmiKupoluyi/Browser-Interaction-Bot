@@ -1,7 +1,0 @@
-file:///Users/tofunmi/Documents/capstone_project/Lacuna_New/Lacuna/test_code/test.js 1:9 "Click"
-file:///Users/tofunmi/Documents/capstone_project/Lacuna_New/Lacuna/test_code/test.js 7:9 "Mouseover"
-file:///Users/tofunmi/Documents/capstone_project/Lacuna_New/Lacuna/test_code/test.js 10:9 "Mouseout"
-file:///Users/tofunmi/Documents/capstone_project/Lacuna_New/Lacuna/test_code/test.js 4:9 "Keydown"
-file:///Users/tofunmi/Documents/capstone_project/Lacuna_New/Lacuna/test_code/test.js 4:9 "Keydown"
-file:///Users/tofunmi/Documents/capstone_project/Lacuna_New/Lacuna/test_code/test.js 4:9 "Keydown"
-file:///Users/tofunmi/Documents/capstone_project/Lacuna_New/Lacuna/test_code/test.js 4:9 "Keydown"
